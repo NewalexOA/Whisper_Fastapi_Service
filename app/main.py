@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import whisper
 import tempfile
 import os
@@ -14,11 +15,14 @@ logger = logging.getLogger(__name__)
 # Доступные модели Whisper
 available_models = ["tiny", "base", "small", "medium", "large", "turbo"]
 
-@app.post("/transcribe/")
+class TranscriptionResponse(BaseModel):
+    transcription: str
+
+@app.post("/transcribe/", response_model=TranscriptionResponse)
 async def transcribe(
     file: UploadFile = File(...), 
     whisper_model: str = Form(...)  # Переименовали model_name в whisper_model
-):
+) -> TranscriptionResponse:
     # Проверка наличия аудиофайла
     if file.content_type not in ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/flac", "audio/mp3", "audio/ogg"]:
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload an audio file.")
@@ -56,4 +60,4 @@ async def transcribe(
             logger.info(f"Temporary file {tmp_filename} removed")
 
     # Возвращаем транскрипцию в виде JSON
-    return JSONResponse(content={"transcription": transcription})
+    return TranscriptionResponse(transcription=transcription)
